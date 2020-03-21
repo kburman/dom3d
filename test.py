@@ -18,13 +18,13 @@ def write_json(data, file_name):
 def main():
     browser = Browser()
     with browser.new_page() as tab:
-        data = tab.collect_data("https://news.ycombinator.com/")
+        data = tab.collect_data("https://news.ycombinator.com/front?day=2020-03-20")
         layout_parser = LayoutParser(data["snapshot"], data["tree"], data["screenshot"])
         layout_parser.build_rtree_index()
         layout_parser.build_dom_index()
         write_json(layout_parser.dom_index, "dom-build.json")
         # write_image(layout_parser.screenshot["data"], "page.png")
-        layout_parser.plot_img()
+        layout_parser.create_report1()
 
         # code.interact(local=dict(globals(), **locals()))
 

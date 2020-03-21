@@ -1,4 +1,5 @@
 import code
+import time
 
 import pychrome
 from urllib.parse import urlparse
@@ -33,8 +34,6 @@ class BrowserTab:
         res['bounds']['height'] = height
         self.tab.call_method("Browser.setWindowBounds", windowId=res['windowId'], bounds=res['bounds'])
 
-
-
     def start(self):
         assert self.tab.start()
         self.tab.call_method("DOMSnapshot.enable")
@@ -64,7 +63,10 @@ class BrowserTab:
         layout_metrics = self.tab.call_method("Page.getLayoutMetrics")
         viewport = layout_metrics["contentSize"].copy()
         viewport["scale"] = 1
-        return self.tab.call_method("Page.captureScreenshot", format="png", clip=viewport)
+        print(layout_metrics)
+        self.set_window_size(viewport["width"], viewport["height"])
+        time.sleep(3)
+        return self.tab.call_method("Page.captureScreenshot", format="png", clip=viewport, fromSurface=True)
 
     def collect_data(self, url):
         self.load_url(url)

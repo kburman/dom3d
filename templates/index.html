@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{%block content %}
+<div class="container">
+    <ul class="list-unstyled">
+        {% for value in report %}
+        <div class="card" style="width: 18rem;">
+          <div class="card-header">
+            {{ value["node"]["attributes"]["href"] }}
+          </div>
+          <ul class="list-group list-group-flush">
+            {% for item in value["related"] %}
+            <li class="list-group-item">{{ item }}</li>
+            {% endfor %}
+            <li class="list-group-item">Area: {{ value["area"] }}</li>
+          </ul>
+        </div>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

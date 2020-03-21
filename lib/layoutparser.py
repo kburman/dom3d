@@ -1,3 +1,7 @@
+import code
+import io
+
+import IPython
 import rtree
 from sympy import *
 from sympy.geometry import *
@@ -16,6 +20,7 @@ def write_image(base64_enc, file_name):
 
 class LayoutParser:
     def __init__(self, snapshot, tree, screenshot):
+        self._screenshot = None
         self.dom_index = {}
         self.snapshot = snapshot
         self.tree = tree
@@ -96,30 +101,83 @@ class LayoutParser:
                 is_stacking_cntx_backend_id = nodes["backendNodeId"][node_index]
                 self.dom_index[is_stacking_cntx_backend_id]["isStackingContext"] = True
 
-    def plot_img(self):
+    def create_report1(self):
+        response = []
+        for backend_id, node in self.dom_index.items():
+            if len(node.get("bounds", [])) == 0:
+                continue
+
+            if node["node_name"] != "A":
+                continue
+
+            if "href" not in node["attributes"]:
+                continue
+
+            if node["attributes"]["href"] is None or node["attributes"]["href"][0] == "#":
+                continue
+
+            x, y, w, h = node["bounds"]
+            if w == 0 or h == 0:
+                continue
+
+            ply = Polygon((x, y), (x + w, y), (x + w, y + h), (x, y + h))
+            rel_backend_ids = self.idx.intersection((x, y, x + w, y + h), objects=False)
+            rel_backend_ids = map(lambda bid: self.dom_index[bid]["node_value"], rel_backend_ids)
+            rel_backend_ids = [x.strip() for x in rel_backend_ids if x is not None]
+            rel_backend_ids = [x.strip() for x in rel_backend_ids if len(x) > 1]
+
+            if len(rel_backend_ids) == 0:
+                continue
+            response.append({
+                "backend_id": backend_id,
+                "node": node.copy(),
+                "related": rel_backend_ids,
+                "area": ply.area,
+                "x": x,
+            })
+        response = sorted(response, key=lambda elem: [elem["x"], elem["area"]], reverse=True)
+        return response
+
+    def create_report(self):
         write_image(self.screenshot["data"], "page.png")
-        colors = ['red', 'green', 'yellow', 'blue', 'white', 'black', 'brown', 'gray']
+        # colors = ['red', 'green', 'yellow', 'blue', 'white', 'black', 'brown', 'gray']
 
         response = {}
-        img = np.array(Image.open('page.png'), dtype=np.uint8)
-        fig, ax = plt.subplots(1)
-        ax.imshow(img)
-        for k, v in self.dom_index.items():
-            if ("bounds" not in v) or (len(v["bounds"]) == 0) or (v["node_name"] not in ["#text"]):
-                continue
-            if len(v["node_value"]) == 0:
-                continue
+        self._screenshot = Image.open('page.png').convert('RGB')
+        # img = np.array(self._screenshot, dtype=np.uint8)
+        # fig, ax = plt.subplots(1)
+        # ax.imshow(img)
+        for backend_id, node in self.dom_index.items():
 
-            x, y, w, h = v["bounds"]
-            rect = patches.Rectangle((x, y), w, h, linewidth=1, edgecolor=random.choice(colors), facecolor=random.choice(colors))
-            ax.add_patch(rect)
-        plt.show()
+            # if ("bounds" not in node) or (len(node["bounds"]) == 0) or (node["node_name"] not in ["DIV", "IMG", "A", "SPAN"]):
+            #     continue
+            if ("bounds" not in node) or (len(node["bounds"]) == 0):
+                continue
+            x, y, w, h = node["bounds"]
+            response[backend_id] = node.copy()
+            response[backend_id]["image"] = self._get_b64_screenshot(x, y, w, h)
+            response[backend_id]["intersection"] = list(self.idx.intersection((x, y, x + w, y + h), objects=False))
+
+            # rect = patches.Rectangle((x, y), w, h, linewidth=1, edgecolor=random.choice(colors), facecolor=random.choice(colors))
+            # ax.add_patch(rect)
+        # plt.show()
+        return response
 
     def __resolve_string(self, string_table_index):
         if string_table_index == -1:
             return None
         else:
             return self.snapshot["strings"][string_table_index]
+
+    def _get_b64_screenshot(self, x, y, w, h):
+        try:
+            img = self._screenshot.crop((x, y, x + w, y + h))
+            with io.BytesIO() as output:
+                img.save(output, format="jpeg")
+                contents = output.getvalue()
+                return base64.b64encode(contents).decode("utf-8")
+        except:
+            return None
 
     def __rtree_data_gen(self):
         """
