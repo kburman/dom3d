@@ -4,15 +4,28 @@
 <div class="container">
     <ul class="list-unstyled">
         {% for value in report %}
-        <div class="card" style="width: 18rem;">
-          <div class="card-header">
-            {{ value["node"]["attributes"]["href"] }}
-          </div>
+        <div class="card">
+            {% if value["node"]["node_name"] == "IMG" %}
+                <img src='{{ value["node"]["attributes"]["src"] }}' class="card-img-top">
+            {% else %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ value["node"]["node_value"] }}</h5>
+                    <p class="card-text">{{ value["node"]["attributes"]["href"] }}</p>
+                  </div>
+            {% endif %}
+
           <ul class="list-group list-group-flush">
-            {% for item in value["related"] %}
-            <li class="list-group-item">{{ item }}</li>
-            {% endfor %}
-            <li class="list-group-item">Area: {{ value["area"] }}</li>
+            <li class="list-group-item">Rank: {{ value["rank"] }}</li>
+            <li class="list-group-item">Bounds: {{ value["node"]["bounds"] }}</li>
+              {% for item in value["related"] if item["node_value"] is not none %}
+                <li class="list-group-item">
+                    {%if item["node_name"] == "IMG" %}
+                        {{ item["attributes"]["src"] }}
+                    {% else %}
+                        {{ item["node_value"] }}
+                    {% endif %}
+                </li>
+              {% endfor %}
           </ul>
         </div>
         {% endfor %}

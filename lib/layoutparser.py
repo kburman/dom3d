@@ -28,7 +28,14 @@ class LayoutParser:
         self.idx = None
 
     def build_rtree_index(self):
-        self.idx = rtree.index.Rtree('bulk', self.__rtree_data_gen())
+        p = rtree.index.Property()
+        p.overwrite = True
+        p.storage = rtree.index.RT_Memory
+        p.dimension = 2
+        self.idx = rtree.index.Rtree(p.filename,
+                                     self.__rtree_data_gen(),
+                                     properties=p
+                                     )
 
     def build_dom_index(self):
         for doc in self.snapshot["documents"]:
@@ -107,35 +114,47 @@ class LayoutParser:
             if len(node.get("bounds", [])) == 0:
                 continue
 
-            if node["node_name"] != "A":
+            if node["node_name"] not in ["A"]:
                 continue
 
-            if "href" not in node["attributes"]:
-                continue
-
-            if node["attributes"]["href"] is None or node["attributes"]["href"][0] == "#":
-                continue
+            # if node["node_name"] == "A":
+            #     if "href" not in node["attributes"] or node["attributes"]["href"][0] == "#":
+            #         continue
+            # elif node["node_name"] == "IMG":
+            #     if "src" not in node["attributes"] or len(node["attributes"]["src"]) == 0:
+            #         continue
 
             x, y, w, h = node["bounds"]
             if w == 0 or h == 0:
                 continue
 
-            ply = Polygon((x, y), (x + w, y), (x + w, y + h), (x, y + h))
-            rel_backend_ids = self.idx.intersection((x, y, x + w, y + h), objects=False)
-            rel_backend_ids = map(lambda bid: self.dom_index[bid]["node_value"], rel_backend_ids)
-            rel_backend_ids = [x.strip() for x in rel_backend_ids if x is not None]
-            rel_backend_ids = [x.strip() for x in rel_backend_ids if len(x) > 1]
+            rel_backend_ids = []
+            for rel_node_backend_id in self.idx.contains((x, y, x + w, y + h), objects=False):
+                rel_node = self.dom_index[rel_node_backend_id]
+
+                if rel_node["paintOrders"] > node["paintOrders"]:
+                    continue
+
+                if len(rel_node["bounds"]) == 0:
+                    continue
+
+                x, y, w, h = rel_node["bounds"]
+                if w == 0 or h == 0:
+                    continue
+
+                rel_backend_ids.append(rel_node)
 
             if len(rel_backend_ids) == 0:
                 continue
+
+            rank = (100/(x+1))*(w*h)
             response.append({
                 "backend_id": backend_id,
                 "node": node.copy(),
                 "related": rel_backend_ids,
-                "area": ply.area,
-                "x": x,
+                "rank": rank,
             })
-        response = sorted(response, key=lambda elem: [elem["x"], elem["area"]], reverse=True)
+        response = sorted(response, key=lambda elem: elem["rank"], reverse=True)
         return response
 
     def create_report(self):

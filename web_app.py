@@ -18,7 +18,7 @@ def index():
     report = None
     with browser.new_page() as tab:
         print("Loading page")
-        data = tab.collect_data("https://timesofindia.indiatimes.com/")
+        data = tab.collect_data("https://news.ycombinator.com/")
         layout_parser = LayoutParser(data["snapshot"], data["tree"], data["screenshot"])
         print("Building rtree")
         layout_parser.build_rtree_index()

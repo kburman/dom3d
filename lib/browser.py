@@ -65,12 +65,11 @@ class BrowserTab:
         viewport["scale"] = 1
         print(layout_metrics)
         self.set_window_size(viewport["width"], viewport["height"])
-        time.sleep(3)
-        return self.tab.call_method("Page.captureScreenshot", format="png", clip=viewport, fromSurface=True)
+        return self.tab.call_method("Page.captureScreenshot", format="png", clip=viewport)
 
     def collect_data(self, url):
         self.load_url(url)
-        self.wait(5)
+        self.wait(3)
         return {
             "snapshot": self.collect_dom_snapshot(),
             "screenshot": self.collect_dom_screenshot(),

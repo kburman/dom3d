@@ -5,8 +5,12 @@
 
 
  */
-
-
+body {
+  background: #f7f7f7;
+}
+.card {
+  margin: 1em 0;
+}
 
 
 
